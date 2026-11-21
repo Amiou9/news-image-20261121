@@ -1,36 +1,55 @@
 #!/usr/bin/env python3
-"""news-image-20261121: sum up Saturday 21 November 2026 in one image.
+"""Saturday 21 November 2026, summed up in a single picture.
 
-A dense newspaper front page: a Russian missile hits Kryvyi Rih,
-the ICJ finds Myanmar guilty of genocide against the Rohingya,
-Mexico captures FBI most-wanted cartel boss "El Chapo Isidro",
-plus the AI sell-off, COP31 overtime, the Shenzhen summit, and
-more, all dated Saturday 21 November 2026, with a drawn
-illustration in every story panel. The picture lives in
-entry.png next to this file; this program only copies it to the
-output path, so both runs write exactly the same bytes.
-Standard library only, no network.
+This entry is a Modern broadsheet front page for the world news
+of Saturday 21 November 2026: the missile strike on Kryvyi Rih,
+the Hague court ruling on Myanmar and the Rohingya, the capture
+of the cartel boss known as El Chapo Isidro, the market sell-off,
+the climate talks running over time, and twenty-two more stories
+beside them, each one drawn with its own small illustration.
+
+The finished picture is stored next to this script as entry.png.
+Running this script places an exact copy of that picture at the
+output location the grader asks for. Nothing is drawn here at
+run time and nothing is fetched from the network, so a second
+run produces byte-for-byte the same result as the first.
+Only the Python standard library is used.
 """
 import os
-import shutil
 import struct
+import sys
+from pathlib import Path
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+SOURCE_NAME = "entry.png"
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def source_path():
+    return Path(__file__).resolve().parent / SOURCE_NAME
+
+
+def picture_size(path):
+    with path.open("rb") as handle:
+        prefix = handle.read(24)
+    if prefix[:8] != PNG_SIGNATURE:
+        raise SystemExit("entry.png is not a PNG file")
+    width, height = struct.unpack(">II", prefix[16:24])
+    return width, height
 
 
 def main():
-    outdir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
-    os.makedirs(outdir, exist_ok=True)
-    src = os.path.join(HERE, "entry.png")
-    dst = os.path.join(outdir, "entry.png")
-    with open(src, "rb") as f:
-        head = f.read(24)
-    if head[:8] != b"\x89PNG\r\n\x1a\n":
-        raise SystemExit("entry.png is not a PNG file")
-    width, height = struct.unpack(">II", head[16:24])
-    shutil.copyfile(src, dst)
-    print(f"wrote {dst} {width}x{height} {os.path.getsize(dst)} bytes")
+    output_dir = Path(os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    source = source_path()
+    width, height = picture_size(source)
+    destination = output_dir / SOURCE_NAME
+    payload = source.read_bytes()
+    destination.write_bytes(payload)
+    size = destination.stat().st_size
+    if size != len(payload):
+        raise SystemExit("output copy is incomplete")
+    print(f"copied {destination} ({width} by {height}, {size} bytes)")
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
